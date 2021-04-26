@@ -1,0 +1,17 @@
+{
+  "hints": [],
+  "groups": [
+    {
+      "sourceType": "org.apache.skywalking.apm.webapp.proxy.RewritePathFilter",
+      "name": "collector",
+      "type": "org.apache.skywalking.apm.webapp.proxy.RewritePathFilter"
+    }
+  ],
+  "properties": [
+    {
+      "sourceType": "org.apache.skywalking.apm.webapp.proxy.RewritePathFilter",
+      "name": "collector.path",
+      "type": "java.lang.String"
+    }
+  ]
+}
