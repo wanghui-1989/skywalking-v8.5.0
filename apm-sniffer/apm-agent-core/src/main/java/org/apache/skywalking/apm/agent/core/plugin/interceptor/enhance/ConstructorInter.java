@@ -29,6 +29,8 @@ import org.apache.skywalking.apm.agent.core.logging.api.ILog;
 /**
  * The actual byte-buddy's interceptor to intercept constructor methods. In this class, it provide a bridge between
  * byte-buddy and sky-walking plugin.
+ *
+ * 构造器拦截器，调用构造器增强方法interceptor.onConstruct，主要完成在目标实例的构造器方法调用完成后 再调用增强方法。
  */
 public class ConstructorInter {
     private static final ILog LOGGER = LogManager.getLogger(ConstructorInter.class);
@@ -61,7 +63,7 @@ public class ConstructorInter {
     public void intercept(@This Object obj, @AllArguments Object[] allArguments) {
         try {
             EnhancedInstance targetObject = (EnhancedInstance) obj;
-
+            //拦截构造器，增强构造器
             interceptor.onConstruct(targetObject, allArguments);
         } catch (Throwable t) {
             LOGGER.error("ConstructorInter failure.", t);

@@ -120,6 +120,7 @@ public abstract class AbstractClassEnhancePluginDefine {
         return null;
     }
 
+    //TODO 待看 包括线程的增强
     public boolean isBootstrapInstrumentation() {
         return false;
     }

@@ -33,6 +33,8 @@ import org.apache.skywalking.apm.network.trace.component.Component;
  * <p>
  * Such as: Dubbox - Apache Httpcomponent - ...(Remote) The <code>ExitSpan</code> represents the Dubbox span, and ignore
  * the httpcomponent span's info.
+ *
+ * 代表一个服务消费者点。
  */
 public class ExitSpan extends StackBasedTracingSpan implements ExitTypeSpan {
     public ExitSpan(int spanId, int parentSpanId, String operationName, String peer, TracingContext owner) {
@@ -49,6 +51,7 @@ public class ExitSpan extends StackBasedTracingSpan implements ExitTypeSpan {
     @Override
     public ExitSpan start() {
         if (++stackDepth == 1) {
+            //栈里面没元素，ExitSpan是第一个，要初始化开始时间
             super.start();
         }
         return this;

@@ -26,37 +26,41 @@ import org.apache.skywalking.apm.agent.core.context.trace.AbstractSpan;
 public interface AbstractTracerContext {
     /**
      * Prepare for the cross-process propagation. How to initialize the carrier, depends on the implementation.
+     * 准备跨进程传播。
      *
-     * @param carrier to carry the context for crossing process.
+     * @param carrier to carry the context for crossing process. 承载跨进程的上下文
      */
     void inject(ContextCarrier carrier);
 
     /**
      * Build the reference between this segment and a cross-process segment. How to build, depends on the
      * implementation.
-     *
-     * @param carrier carried the context from a cross-process segment.
+     * 建立当前segment和跨进程segment之间的引用关系
+     * @param carrier carried the context from a cross-process segment. 承载着跨进程segment的上下文
      */
     void extract(ContextCarrier carrier);
 
     /**
      * Capture a snapshot for cross-thread propagation. It's a similar concept with ActiveSpan.Continuation in
      * OpenTracing-java How to build, depends on the implementation.
+     * 为即将的跨线程传播捕获快照。
      *
-     * @return the {@link ContextSnapshot} , which includes the reference context.
+     * @return the {@link ContextSnapshot} , which includes the reference context.捕获的快照，包括引用上下文。
      */
     ContextSnapshot capture();
 
     /**
      * Build the reference between this segment and a cross-thread segment. How to build, depends on the
      * implementation.
+     * 建立当前segment和跨线程segment之间的引用关系
      *
-     * @param snapshot from {@link #capture()} in the parent thread.
+     * @param snapshot from {@link #capture()} in the parent thread. 父线程的快照
      */
     void continued(ContextSnapshot snapshot);
 
     /**
      * Get the global trace id, if needEnhance. How to build, depends on the implementation.
+     * 获取全局trace id
      *
      * @return the string represents the id.
      */
@@ -64,6 +68,7 @@ public interface AbstractTracerContext {
 
     /**
      * Get the current segment id, if needEnhance. How to build, depends on the implementation.
+     * 获取当前segment id
      *
      * @return the string represents the id.
      */
@@ -71,6 +76,7 @@ public interface AbstractTracerContext {
 
     /**
      * Get the active span id, if needEnhance. How to build, depends on the implementation.
+     * 获取正活跃的span id
      *
      * @return the string represents the id.
      */
@@ -78,6 +84,7 @@ public interface AbstractTracerContext {
 
     /**
      * Create an entry span
+     * 创建一个EntrySpan。
      *
      * @param operationName most likely a service name
      * @return the span represents an entry point of this segment.

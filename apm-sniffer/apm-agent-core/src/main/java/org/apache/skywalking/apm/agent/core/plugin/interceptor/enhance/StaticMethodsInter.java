@@ -29,6 +29,7 @@ import org.apache.skywalking.apm.agent.core.logging.api.ILog;
 import org.apache.skywalking.apm.agent.core.logging.api.LogManager;
 
 /**
+ * 静态方法的拦截器。传入静态方法的拦截器类路径。
  * The actual byte-buddy's interceptor to intercept class instance methods. In this class, it provide a bridge between
  * byte-buddy and sky-walking plugin.
  */
@@ -53,6 +54,7 @@ public class StaticMethodsInter {
 
     /**
      * Intercept the target static method.
+     * 拦截目标静态方法，类似于AOP的环绕通知。
      *
      * @param clazz        target class
      * @param allArguments all method arguments
@@ -65,11 +67,13 @@ public class StaticMethodsInter {
     @RuntimeType
     public Object intercept(@Origin Class<?> clazz, @AllArguments Object[] allArguments, @Origin Method method,
         @SuperCall Callable<?> zuper) throws Throwable {
+        //用原始类的classLoader去加载拦截器
         StaticMethodsAroundInterceptor interceptor = InterceptorInstanceLoader.load(staticMethodsAroundInterceptorClassName, clazz
             .getClassLoader());
 
         MethodInterceptResult result = new MethodInterceptResult();
         try {
+            //前置通知
             interceptor.beforeMethod(clazz, method, allArguments, method.getParameterTypes(), result);
         } catch (Throwable t) {
             LOGGER.error(t, "class[{}] before static method[{}] intercept failure", clazz, method.getName());
@@ -78,12 +82,15 @@ public class StaticMethodsInter {
         Object ret = null;
         try {
             if (!result.isContinue()) {
+                //不继续，直接返回
                 ret = result._ret();
             } else {
+                //继续，调用类的原始静态方法
                 ret = zuper.call();
             }
         } catch (Throwable t) {
             try {
+                //处理异常
                 interceptor.handleMethodException(clazz, method, allArguments, method.getParameterTypes(), t);
             } catch (Throwable t2) {
                 LOGGER.error(t2, "class[{}] handle static method[{}] exception failure", clazz, method.getName(), t2.getMessage());
@@ -91,6 +98,7 @@ public class StaticMethodsInter {
             throw t;
         } finally {
             try {
+                //后置通知
                 ret = interceptor.afterMethod(clazz, method, allArguments, method.getParameterTypes(), ret);
             } catch (Throwable t) {
                 LOGGER.error(t, "class[{}] after static method[{}] intercept failure:{}", clazz, method.getName(), t.getMessage());

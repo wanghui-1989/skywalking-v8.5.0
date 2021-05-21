@@ -30,42 +30,59 @@ import org.apache.skywalking.apm.util.StringUtil;
  * {@link ContextCarrier} is a data carrier of {@link TracingContext}. It holds the snapshot (current state) of {@link
  * TracingContext}.
  * <p>
+ *
+ * 追踪上下文TracingContext的序列化数据携带者，是一种快照数据，用于跨进程、线程使用。
  */
 @Setter(AccessLevel.PACKAGE)
 public class ContextCarrier implements Serializable {
+    /**
+     * 用的DistributedTraceId
+     */
     @Getter
     private String traceId;
     /**
      * The segment id of the parent.
+     * 父TraceSegment的segment id
      */
     @Getter
     private String traceSegmentId;
     /**
      * The span id in the parent segment.
+     * 父TraceSegment中ExitSpan的span id
      */
     @Getter
     private int spanId = -1;
+    /**
+     * 服务名称，一般为业务系统名，如:HOTEL
+     */
     @Getter
     private String parentService = Constants.EMPTY_STRING;
+    /**
+     * 服务实例名称
+     */
     @Getter
     private String parentServiceInstance = Constants.EMPTY_STRING;
     /**
      * The endpoint(entrance URI/method signature) of the parent service.
+     * 父服务的endpoint，比如http.url
      */
     @Getter
     private String parentEndpoint;
     /**
      * The network address(ip:port, hostname:port) used in the parent service to access the current service.
+     * remote调用发起方，也可以叫客户端的地址，即ip、port
      */
     @Getter
     private String addressUsedAtClient;
     /**
      * The extension context contains the optional context to enhance the analysis in some certain scenarios.
+     * 扩展上下文包含可选上下文，以增强某些特定场景中的分析。
      */
     @Getter(AccessLevel.PACKAGE)
     private ExtensionContext extensionContext = new ExtensionContext();
     /**
      * User's custom context container. The context propagates with the main tracing context.
+     * 用户的自定义上下文容器。上下文与主跟踪上下文一起传播。
      */
     @Getter(AccessLevel.PACKAGE)
     private CorrelationContext correlationContext = new CorrelationContext();

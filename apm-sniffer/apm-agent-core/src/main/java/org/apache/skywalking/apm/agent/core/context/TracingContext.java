@@ -55,6 +55,12 @@ import org.apache.skywalking.apm.util.StringUtil;
  * In skywalking core concept, FOLLOW_OF is an abstract concept when cross-process MQ or cross-thread async/batch tasks
  * happen, we used {@link TraceSegmentRef} for these scenarios. Check {@link TraceSegmentRef} which is from {@link
  * ContextCarrier} or {@link ContextSnapshot}.
+ *
+ * TracingContext表示核心跟踪逻辑控制器。 它通过堆栈机制构建最终的TracingContext，与代码工作类似。
+ * 在opentracing概念中，这意味着段跟踪上下文（线程）中的所有跨度都是CHILD_OF关系，但没有FOLLOW_OF。
+ * 在skywalking的核心概念中，当发生跨进程MQ或跨线程异步/批处理任务时，FOLLOW_OF是一个抽象概念，
+ * 在这些情况下，我们使用TraceSegmentRef。 检查来自ContextCarrier或ContextSnapshot的TraceSegmentRef。
+ *
  */
 public class TracingContext implements AbstractTracerContext {
     private static final ILog LOGGER = LogManager.getLogger(TracingContext.class);
@@ -67,6 +73,7 @@ public class TracingContext implements AbstractTracerContext {
 
     /**
      * The final {@link TraceSegment}, which includes all finished spans.
+     * 一个上下文持有一个TraceSegment
      */
     private TraceSegment segment;
 
@@ -74,6 +81,7 @@ public class TracingContext implements AbstractTracerContext {
      * Active spans stored in a Stack, usually called 'ActiveSpanStack'. This {@link LinkedList} is the in-memory
      * storage-structure. <p> I use {@link LinkedList#removeLast()}, {@link LinkedList#addLast(Object)} and {@link
      * LinkedList#getLast()} instead of {@link #pop()}, {@link #push(AbstractSpan)}, {@link #peek()}
+     * 处于活动中，未完成状态的Span的栈集合
      */
     private LinkedList<AbstractSpan> activeSpanStack = new LinkedList<>();
     /**
@@ -85,6 +93,7 @@ public class TracingContext implements AbstractTracerContext {
 
     /**
      * A counter for the next span.
+     * 根据id升序，还原一个TraceSegment内，多个span的先后执行关系。
      */
     private int spanIdGenerator;
 
@@ -116,10 +125,14 @@ public class TracingContext implements AbstractTracerContext {
 
     /**
      * Initialize all fields with default value.
+     * 构建一个TracingContext上下文
      */
     TracingContext(String firstOPName, SpanLimitWatcher spanLimitWatcher) {
+        //创建一个新的TraceSegment，包括新的traceId，DistributedTraceId。
         this.segment = new TraceSegment();
+        //span id清零
         this.spanIdGenerator = 0;
+        //默认同步模式，即单线程
         isRunningInAsyncMode = false;
         createTime = System.currentTimeMillis();
         running = true;
@@ -139,7 +152,10 @@ public class TracingContext implements AbstractTracerContext {
     /**
      * Inject the context into the given carrier, only when the active span is an exit one.
      *
-     * @param carrier to carry the context for crossing process.
+     * 仅当active span是exit span时，才将上下文注入给定的载体。
+     * 即将activeSpanStack的栈顶span，注入carrier。
+     *
+     * @param carrier to carry the context for crossing process. 跨进程时承载上下文的载体
      * @throws IllegalStateException if (1) the active span isn't an exit one. (2) doesn't include peer. Ref to {@link
      *                               AbstractTracerContext#inject(ContextCarrier)}
      */
@@ -153,6 +169,7 @@ public class TracingContext implements AbstractTracerContext {
      * wouldn't be opened in {@link ContextManager} like {@link #inject(ContextCarrier)}, it is only supported to be
      * called inside the {@link ExitTypeSpan#inject(ContextCarrier)}
      *
+     * 仅当活动span是ExitSpan时，才将上下文注入给定的carrier和给定span。
      * @param carrier  to carry the context for crossing process.
      * @param exitSpan to represent the scope of current injection.
      * @throws IllegalStateException if (1) the span isn't an exit one. (2) doesn't include peer.
@@ -163,20 +180,28 @@ public class TracingContext implements AbstractTracerContext {
         }
 
         ExitTypeSpan spanWithPeer = (ExitTypeSpan) exitSpan;
+        //peer是当前客户端或者说调用发起方的ip、端口
         String peer = spanWithPeer.getPeer();
         if (StringUtil.isEmpty(peer)) {
             throw new IllegalStateException("Exit span doesn't include meaningful peer information.");
         }
 
+        //DistributedTraceId。获取relatedGlobalTraces中的第一个DistributedTraceId，作为traceId，来跨进程。
         carrier.setTraceId(getReadablePrimaryTraceId());
+        //traceSegmentId
         carrier.setTraceSegmentId(this.segment.getTraceSegmentId());
         carrier.setSpanId(exitSpan.getSpanId());
+        //配置的服务名，一般为业务系统名称，如：HOTEL
         carrier.setParentService(Config.Agent.SERVICE_NAME);
+        //服务实例名
         carrier.setParentServiceInstance(Config.Agent.INSTANCE_NAME);
+        //父Endpoint名称
         carrier.setParentEndpoint(first().getOperationName());
+        //remote调用发起方，也可以叫客户端的地址，即ip、port
         carrier.setAddressUsedAtClient(peer);
-
+        //将TracingContext中的用户关联上下文，注入到carrier中的用户关联上下文中
         this.correlationContext.inject(carrier);
+        //将TracingContext中的扩展上下文，注入到carrier中的扩展上下文中
         this.extensionContext.inject(carrier);
     }
 
@@ -187,20 +212,26 @@ public class TracingContext implements AbstractTracerContext {
      */
     @Override
     public void extract(ContextCarrier carrier) {
+        //创建跨进程TraceSegment引用指针
         TraceSegmentRef ref = new TraceSegmentRef(carrier);
+        //远程segment和当前segment建立父子关系 ChildOf关系
         this.segment.ref(ref);
+        //PropagatedTraceId表示从对等方传播过来的DistributedTraceId。
         this.segment.relatedGlobalTraces(new PropagatedTraceId(carrier.getTraceId()));
         AbstractSpan span = this.activeSpan();
         if (span instanceof EntrySpan) {
+            //当前是EntrySpan，关联父span
             span.ref(ref);
         }
 
+        //将上一个TraceSegment的用户和扩展上下文 提取到当前segment的上下文中
         carrier.extractExtensionTo(this);
         carrier.extractCorrelationTo(this);
     }
 
     /**
      * Capture the snapshot of current context.
+     * 捕获当前追踪上下文的快照，为跨线程传播做准备
      *
      * @return the snapshot of context for cross-thread propagation Ref to {@link AbstractTracerContext#capture()}
      */
@@ -284,11 +315,14 @@ public class TracingContext implements AbstractTracerContext {
             entrySpan = parentSpan;
             return entrySpan.start();
         } else {
+            //起始span，第一个服务提供者，parentSpanId=1，spanId=0。
+            //类似于前端对服务端发起http调用，这里是tomcat收到请求的地方，是服务提供者最先收到请求的地方。
             entrySpan = new EntrySpan(
                 spanIdGenerator++, parentSpanId,
                 operationName, owner
             );
             entrySpan.start();
+            //压栈，记录起始栈帧
             return push(entrySpan);
         }
     }
@@ -302,6 +336,7 @@ public class TracingContext implements AbstractTracerContext {
     @Override
     public AbstractSpan createLocalSpan(final String operationName) {
         if (isLimitMechanismWorking()) {
+            //达到了限制的span数量，创建NoopSpan
             NoopSpan span = new NoopSpan();
             return push(span);
         }
@@ -332,9 +367,12 @@ public class TracingContext implements AbstractTracerContext {
         AbstractSpan parentSpan = peek();
         TracingContext owner = this;
         if (parentSpan != null && parentSpan.isExit()) {
+            //parentSpan是ExitSpan，TODO 考虑下这是什么场景会出现？？
             exitSpan = parentSpan;
         } else {
+            //大部分情况下parentSpan不为null TODO 考虑下null什么场景会出现？？
             final int parentSpanId = parentSpan == null ? -1 : parentSpan.getSpanId();
+            //remotePeer是当前客户端或者说调用发起方的ip、端口
             exitSpan = new ExitSpan(spanIdGenerator++, parentSpanId, operationName, remotePeer, owner);
             push(exitSpan);
         }
@@ -344,6 +382,7 @@ public class TracingContext implements AbstractTracerContext {
 
     /**
      * @return the active span of current context, the top element of {@link #activeSpanStack}
+     * 当前上下文的active span，即activeSpanStack的栈顶元素。
      */
     @Override
     public AbstractSpan activeSpan() {
@@ -545,6 +584,13 @@ public class TracingContext implements AbstractTracerContext {
         return firstSpan;
     }
 
+    /**
+     * 是否达到了工作极限
+     * 在配置文件中，我们可以限制每个Segment中span的数量不超过某个值，避免过多的span创建，对内存造成影响。
+     * 也可以根据此数值来估算trace需要的内存量。
+     * 默认SPAN_LIMIT_PER_SEGMENT=300个
+     * @return
+     */
     private boolean isLimitMechanismWorking() {
         if (spanIdGenerator >= spanLimitWatcher.getSpanLimit()) {
             long currentTimeMillis = System.currentTimeMillis();

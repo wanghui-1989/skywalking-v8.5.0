@@ -69,8 +69,9 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
     @Override
     protected DynamicType.Builder<?> enhance(TypeDescription typeDescription, DynamicType.Builder<?> newClassBuilder,
         ClassLoader classLoader, EnhanceContext context) throws PluginException {
+        //先对类和静态方法增强
         newClassBuilder = this.enhanceClass(typeDescription, newClassBuilder, classLoader);
-
+        //然后对实例对象和实例方法增强
         newClassBuilder = this.enhanceInstance(typeDescription, newClassBuilder, classLoader, context);
 
         return newClassBuilder;
@@ -86,6 +87,7 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
     private DynamicType.Builder<?> enhanceInstance(TypeDescription typeDescription,
         DynamicType.Builder<?> newClassBuilder, ClassLoader classLoader,
         EnhanceContext context) throws PluginException {
+        //构造函数拦截点，实例方法拦截点
         ConstructorInterceptPoint[] constructorInterceptPoints = getConstructorsInterceptPoints();
         InstanceMethodsInterceptPoint[] instanceMethodsInterceptPoints = getInstanceMethodsInterceptPoints();
         String enhanceOriginClassName = typeDescription.getTypeName();
@@ -114,21 +116,31 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
          *
          * And make sure the source codes manipulation only occurs once.
          *
+         * 1. 处理类的源代码
+         *  1.1 添加一个private volatile Object _$EnhancedClassField_ws字段。
+         *  1.2 为这个新加的字段，增加属性值访问器
+         *
          */
         if (!typeDescription.isAssignableTo(EnhancedInstance.class)) {
+            //待增强类型没有实现EnhancedInstance接口
             if (!context.isObjectExtended()) {
+                //实例对象也没有被增强过的话
+                //实现EnhancedInstance，增加属性字段，该属性的访问器
                 newClassBuilder = newClassBuilder.defineField(
                     CONTEXT_ATTR_NAME, Object.class, ACC_PRIVATE | ACC_VOLATILE)
                                                  .implement(EnhancedInstance.class)
                                                  .intercept(FieldAccessor.ofField(CONTEXT_ATTR_NAME));
+                //标记该实例被增强过了，保证只增强一次
                 context.extendObjectCompleted();
             }
         }
 
         /**
          * 2. enhance constructors
+         * 2. 增强构造器
          */
         if (existedConstructorInterceptPoint) {
+            //构造器拦截器
             for (ConstructorInterceptPoint constructorInterceptPoint : constructorInterceptPoints) {
                 if (isBootstrapInstrumentation()) {
                     newClassBuilder = newClassBuilder.constructor(constructorInterceptPoint.getConstructorMatcher())
@@ -147,6 +159,7 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
 
         /**
          * 3. enhance instance methods
+         * 3. 增强实例方法
          */
         if (existedMethodsInterceptPoints) {
             for (InstanceMethodsInterceptPoint instanceMethodsInterceptPoint : instanceMethodsInterceptPoints) {

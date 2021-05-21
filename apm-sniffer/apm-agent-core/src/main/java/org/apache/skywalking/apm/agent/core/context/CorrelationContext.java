@@ -33,6 +33,7 @@ import org.apache.skywalking.apm.util.StringUtil;
 
 /**
  * Correlation context, use to propagation user custom data.
+ * 关联上下文，用于传播用户自定义数据。
  */
 public class CorrelationContext {
 

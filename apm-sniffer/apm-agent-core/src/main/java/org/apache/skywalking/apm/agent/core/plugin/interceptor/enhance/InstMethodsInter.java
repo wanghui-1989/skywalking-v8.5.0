@@ -33,6 +33,8 @@ import org.apache.skywalking.apm.agent.core.logging.api.ILog;
 /**
  * The actual byte-buddy's interceptor to intercept class instance methods. In this class, it provide a bridge between
  * byte-buddy and sky-walking plugin.
+ *
+ * 实例方法拦截器，类似AOP的环绕通知。
  */
 public class InstMethodsInter {
     private static final ILog LOGGER = LogManager.getLogger(InstMethodsInter.class);
@@ -73,6 +75,7 @@ public class InstMethodsInter {
 
         MethodInterceptResult result = new MethodInterceptResult();
         try {
+            //前置通知
             interceptor.beforeMethod(targetObject, method, allArguments, method.getParameterTypes(), result);
         } catch (Throwable t) {
             LOGGER.error(t, "class[{}] before method[{}] intercept failure", obj.getClass(), method.getName());
@@ -83,10 +86,12 @@ public class InstMethodsInter {
             if (!result.isContinue()) {
                 ret = result._ret();
             } else {
+                //执行原目标方法
                 ret = zuper.call();
             }
         } catch (Throwable t) {
             try {
+                //异常处理
                 interceptor.handleMethodException(targetObject, method, allArguments, method.getParameterTypes(), t);
             } catch (Throwable t2) {
                 LOGGER.error(t2, "class[{}] handle method[{}] exception failure", obj.getClass(), method.getName());
@@ -94,6 +99,7 @@ public class InstMethodsInter {
             throw t;
         } finally {
             try {
+                //后置通知
                 ret = interceptor.afterMethod(targetObject, method, allArguments, method.getParameterTypes(), ret);
             } catch (Throwable t) {
                 LOGGER.error(t, "class[{}] after method[{}] intercept failure", obj.getClass(), method.getName());

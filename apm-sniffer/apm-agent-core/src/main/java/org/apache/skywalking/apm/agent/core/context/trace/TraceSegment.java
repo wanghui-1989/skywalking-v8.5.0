@@ -31,10 +31,14 @@ import org.apache.skywalking.apm.network.language.agent.v3.SegmentObject;
  * {@link TraceSegment} is a segment or fragment of the distributed trace. See https://github.com/opentracing/specification/blob/master/specification.md#the-opentracing-data-model
  * A {@link TraceSegment} means the segment, which exists in current {@link Thread}. And the distributed trace is formed
  * by multi {@link TraceSegment}s, because the distributed trace crosses multi-processes, multi-threads. <p>
+ *
+ * TraceSegment是分布式跟踪的一个片段或片段。看下https://github.com/opentracing/specification/blob/master/specification
+ * .md#the-opentracing数据模型。TraceSegment是指存在于当前线程中的段。分布式追踪是由多个跟踪段组成的，因为分布式跟踪跨越多进程、多线程。
  */
 public class TraceSegment {
     /**
      * The id of this trace segment. Every segment has its unique-global-id.
+     * 即trace id
      */
     private String traceSegmentId;
 
@@ -44,12 +48,15 @@ public class TraceSegment {
      * we use this {@code #refs} to link them.
      * <p>
      * This field will not be serialized. Keeping this field is only for quick accessing.
+     * 父跟踪段的引用，主跟踪段除外。对于大多数RPC调用，refs只包含一个元素，但如果此段是批处理的起始范围，则该段将面对多个父级，
+     * 此时，我们使用此#refs链接它们。此字段将不会序列化。保留此字段仅用于快速访问。
      */
     private List<TraceSegmentRef> refs;
 
     /**
      * The spans belong to this trace segment. They all have finished. All active spans are hold and controlled by
      * "skywalking-api" module.
+     * 属于此TraceSegment的所有Span，他们都完成了。所有活动中的Span都由“skywalking-api”模块持有和控制。
      */
     private List<AbstractTracingSpan> spans;
 
@@ -60,6 +67,14 @@ public class TraceSegment {
      * <code>relatedGlobalTraces</code> and {@link #refs} is: {@link #refs} targets this {@link TraceSegment}'s direct
      * parent, <p> and <p> <code>relatedGlobalTraces</code> targets this {@link TraceSegment}'s related call chain, a
      * call chain contains multi {@link TraceSegment}s, only using {@link #refs} is not enough for analysis and ui.
+     *
+     * relatedGlobalTraces表示所有相关跟踪的集合。 大多数情况下，它仅包含一个元素，因为仅存在一个父级TraceSegment，
+     * 但是在批处理方案中，num变得大于1，这也意味着多父级TraceSegment。
+     * relatedGlobalTraces和refs之间的区别是：refs定位到该TraceSegment的直接父级，
+     * 和
+     * relatedGlobalTraces针对此TraceSegment的相关调用链，一个调用链包含多个TraceSegments，仅使用引用不足以进行分析和ui。
+     *
+     * 从DistributedTraceId的含义来理解这个值。分布式追踪中用到。
      */
     private DistributedTraceIds relatedGlobalTraces;
 
@@ -73,15 +88,19 @@ public class TraceSegment {
      * Create a default/empty trace segment, with current time as start time, and generate a new segment id.
      */
     public TraceSegment() {
+        //生成trace id
         this.traceSegmentId = GlobalIdGenerator.generate();
+        //初始化span栈
         this.spans = new LinkedList<>();
         this.relatedGlobalTraces = new DistributedTraceIds();
+        //添加第一个DistributedTraceId
         this.relatedGlobalTraces.append(new NewDistributedTraceId());
         this.createTime = System.currentTimeMillis();
     }
 
     /**
      * Establish the link between this segment and its parents.
+     * 建立此segment与其父segment之间的链接。
      *
      * @param refSegment {@link TraceSegmentRef}
      */
@@ -96,6 +115,7 @@ public class TraceSegment {
 
     /**
      * Establish the line between this segment and all relative global trace ids.
+     * 在该segment和所有相关全局trace id之间建立一条线。
      */
     public void relatedGlobalTraces(DistributedTraceId distributedTraceId) {
         relatedGlobalTraces.append(distributedTraceId);

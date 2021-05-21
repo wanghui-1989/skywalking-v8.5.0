@@ -34,9 +34,13 @@ public class DistributedTraceIds {
     }
 
     public void append(DistributedTraceId distributedTraceId) {
+        //如果relatedGlobalTraces不为空 并且 头是NewDistributedTraceId 需要删除头
+        //因为当前TraceSegment和父segment是同一个分布式traceid的关系，当前TraceSegment不能使用另一个不同的traceid
         if (relatedGlobalTraces.size() > 0 && relatedGlobalTraces.getFirst() instanceof NewDistributedTraceId) {
             relatedGlobalTraces.removeFirst();
         }
+        //头不是NewDistributedTraceId，就有可能是PropagatedTraceId，具体还得细看。
+        //不包括，就加进去，正常来讲加进去的一定是放在头的位置，作为一致的distributedTraceId
         if (!relatedGlobalTraces.contains(distributedTraceId)) {
             relatedGlobalTraces.add(distributedTraceId);
         }

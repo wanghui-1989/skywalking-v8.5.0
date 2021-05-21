@@ -29,6 +29,8 @@ import org.apache.skywalking.apm.network.language.agent.v3.SegmentReference;
  * {@link TraceSegmentRef} is like a pointer, which ref to another {@link TraceSegment}, use {@link #spanId} point to
  * the exact span of the ref {@link TraceSegment}.
  * <p>
+ *     TraceSegmentRef就像一个指针，它引用另一个TraceSegment，使用spanId指向ref TraceSegment的确切范围。
+ *     有两种类型：跨进程CROSS_PROCESS, 跨线程CROSS_THREAD
  */
 @Getter
 public class TraceSegmentRef {
@@ -47,13 +49,17 @@ public class TraceSegmentRef {
      * @param carrier the valid cross-process propagation format.
      */
     public TraceSegmentRef(ContextCarrier carrier) {
+        //跨进程
         this.type = SegmentRefType.CROSS_PROCESS;
+        //上一个TraceSegment的DistributedTraceId
         this.traceId = carrier.getTraceId();
+        //上一个TraceSegment的segment id
         this.traceSegmentId = carrier.getTraceSegmentId();
         this.spanId = carrier.getSpanId();
         this.parentService = carrier.getParentService();
         this.parentServiceInstance = carrier.getParentServiceInstance();
         this.parentEndpoint = carrier.getParentEndpoint();
+        //上一个的ip，端口
         this.addressUsedAtClient = carrier.getAddressUsedAtClient();
     }
 

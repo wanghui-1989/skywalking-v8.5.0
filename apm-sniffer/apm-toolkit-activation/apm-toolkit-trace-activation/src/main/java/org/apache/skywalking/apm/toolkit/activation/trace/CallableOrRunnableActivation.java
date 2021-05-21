@@ -32,14 +32,20 @@ import static org.apache.skywalking.apm.agent.core.plugin.match.ClassAnnotationM
 /**
  * {@link CallableOrRunnableActivation} presents that skywalking intercepts all Class with annotation
  * "org.skywalking.apm.toolkit.trace.TraceCrossThread" and method named "call" or "run".
+ *
+ * CallableOrRunnableActivation表示skywalking截获所有带有注释“org.skywalking.apm.toolkit.trace.TraceCrossThread”
+ * 和名为“call”(指Callable)，“run”(指Runnable)，"get"(指Supplier)的方法的类。
  */
 public class CallableOrRunnableActivation extends ClassInstanceMethodsEnhancePluginDefine {
 
     public static final String ANNOTATION_NAME = "org.apache.skywalking.apm.toolkit.trace.TraceCrossThread";
     private static final String INIT_METHOD_INTERCEPTOR = "org.apache.skywalking.apm.toolkit.activation.trace.CallableOrRunnableConstructInterceptor";
     private static final String CALL_METHOD_INTERCEPTOR = "org.apache.skywalking.apm.toolkit.activation.trace.CallableOrRunnableInvokeInterceptor";
+    //Callable
     private static final String CALL_METHOD_NAME = "call";
+    //Runnable
     private static final String RUN_METHOD_NAME = "run";
+    //Supplier
     private static final String GET_METHOD_NAME = "get";
 
     @Override

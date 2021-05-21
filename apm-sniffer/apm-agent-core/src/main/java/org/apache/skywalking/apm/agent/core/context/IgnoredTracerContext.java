@@ -28,6 +28,8 @@ import org.apache.skywalking.apm.agent.core.context.trace.NoopSpan;
  * integer depth field.
  * <p>
  * All operations through this will be ignored, and keep the memory and gc cost as low as possible.
+ * IgnoredTracerContext表示应该忽略的上下文。 因此，它仅使用整数深度字段来维护堆栈。
+ * 通过该操作进行的所有操作都将被忽略，并保持内存和gc成本尽可能低。
  */
 public class IgnoredTracerContext implements AbstractTracerContext {
     private static final NoopSpan NOOP_SPAN = new NoopSpan();

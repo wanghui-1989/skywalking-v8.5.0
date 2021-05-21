@@ -33,6 +33,12 @@ import lombok.ToString;
  * <p>
  * The <code>DistributedTraceId</code> contains only one string, and can NOT be reset, creating a new instance is the
  * only option.
+ *
+ * DistributedTraceId表示分布式调用链。
+ * 这个调用链有一个唯一的（服务）入口，
+ * 例如：服务：http://www.skywalking.com/cust/query，所有在这个服务后面调用的remote，rest remote，db executions，
+ * 使用相同的DistributedTraceId，即使在不同的JVM中。
+ * DistributedTraceId只包含一个字符串，无法重置，创建新实例是唯一的选项
  */
 @RequiredArgsConstructor
 @ToString

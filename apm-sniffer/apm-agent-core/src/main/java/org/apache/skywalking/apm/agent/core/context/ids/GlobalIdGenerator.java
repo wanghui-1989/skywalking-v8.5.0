@@ -44,6 +44,7 @@ public final class GlobalIdGenerator {
      * @return unique id to represent a trace or segment
      */
     public static String generate() {
+        //trace id没有做对齐填充，只是将这些数据用.拼接到一起
         return StringUtil.join(
             '.',
             PROCESS_ID,
@@ -61,6 +62,7 @@ public final class GlobalIdGenerator {
         private int lastRandomValue;
 
         private IDContext(long lastTimestamp, short threadSeq) {
+            //传入调用构造器时的当前时间
             this.lastTimestamp = lastTimestamp;
             this.threadSeq = threadSeq;
         }
@@ -71,13 +73,17 @@ public final class GlobalIdGenerator {
 
         private long timestamp() {
             long currentTimeMillis = System.currentTimeMillis();
-
+            //当前时间小于构造器传入的调用时间
             if (currentTimeMillis < lastTimestamp) {
                 // Just for considering time-shift-back by Ops or OS. @hanahmily 's suggestion.
+                //由于操作系统或者人为导致的时间回溯。
                 if (runRandomTimestamp != currentTimeMillis) {
+                    //获取一个新的随线程机值
                     lastRandomValue = ThreadLocalRandom.current().nextInt();
+                    //从上一次开始到这一次，新老时间戳无变化
                     runRandomTimestamp = currentTimeMillis;
                 }
+                //返回该随机值，作为时间戳
                 return lastRandomValue;
             } else {
                 lastTimestamp = currentTimeMillis;

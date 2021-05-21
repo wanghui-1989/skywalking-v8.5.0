@@ -26,9 +26,14 @@ import org.apache.skywalking.apm.util.StringUtil;
  * The <code>StackBasedTracingSpan</code> represents a span with an inside stack construction.
  * <p>
  * This kind of span can start and finish multi times in a stack-like invoke line.
+ * 栈结构的调用链
  */
 public abstract class StackBasedTracingSpan extends AbstractTracingSpan {
     protected int stackDepth;
+    /**
+     * 如果是ExitSpan，这个是当前客户端或者说调用发起方的ip、端口；
+     * 如果是EntrySpan，这个是null。
+     */
     protected String peer;
 
     protected StackBasedTracingSpan(int spanId, int parentSpanId, String operationName, TracingContext owner) {

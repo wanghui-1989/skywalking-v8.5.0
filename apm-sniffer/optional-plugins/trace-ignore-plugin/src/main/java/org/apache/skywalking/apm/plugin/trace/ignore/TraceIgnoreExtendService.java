@@ -30,6 +30,9 @@ import org.apache.skywalking.apm.plugin.trace.ignore.matcher.FastPathMatcher;
 import org.apache.skywalking.apm.plugin.trace.ignore.matcher.TracePathMatcher;
 import org.apache.skywalking.apm.util.StringUtil;
 
+/**
+ * 可配置的，忽略一些接口，即不对这些接口追踪，或者说采样。
+ */
 @OverrideImplementor(SamplingService.class)
 public class TraceIgnoreExtendService extends SamplingService {
     private static final ILog LOGGER = LogManager.getLogger(TraceIgnoreExtendService.class);

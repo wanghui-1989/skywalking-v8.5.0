@@ -17,6 +17,10 @@
 
 package org.apache.skywalking.apm.agent.core.context;
 
+/**
+ * header.key=sw8-correlation
+ * header.value=base64(key1):base64(value1),base64(key2):base64(value2)
+ */
 public class SW8CorrelationCarrierItem extends CarrierItem {
     public static final String HEADER_NAME = "sw8-correlation";
     private final CorrelationContext correlationContext;

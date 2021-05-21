@@ -30,6 +30,7 @@ import org.apache.skywalking.apm.util.StringUtil;
 /**
  * Extension context, It provides the interaction capabilities between the agents deployed in upstream and downstream
  * services.
+ * 扩展上下文，它提供了部署在上游和下游服务中的代理之间的交互功能。
  */
 public class ExtensionContext {
 

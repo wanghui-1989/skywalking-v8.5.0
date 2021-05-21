@@ -76,6 +76,7 @@ public class ContextManagerExtendService implements BootService, GRPCChannelList
         AbstractTracerContext context;
         /*
          * Don't trace anything if the backend is not available.
+         * OAP失联时，不记录任何追踪日志。
          */
         if (!Config.Agent.KEEP_TRACING && GRPCChannelStatus.DISCONNECT.equals(status)) {
             return new IgnoredTracerContext();
@@ -84,12 +85,16 @@ public class ContextManagerExtendService implements BootService, GRPCChannelList
         int suffixIdx = operationName.lastIndexOf(".");
         if (suffixIdx > -1 && Arrays.stream(ignoreSuffixArray)
                                     .anyMatch(a -> a.equals(operationName.substring(suffixIdx)))) {
+            //忽略静态内容的追踪，如.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg
             context = new IgnoredTracerContext();
         } else {
+            //SamplingService 单例
             SamplingService samplingService = ServiceManager.INSTANCE.findService(SamplingService.class);
             if (forceSampling || samplingService.trySampling(operationName)) {
+                //强制记录，或者未超过采样率，则记录trace，生成tracingContext
                 context = new TracingContext(operationName, spanLimitWatcher);
             } else {
+                //采样超标，忽略trace
                 context = new IgnoredTracerContext();
             }
         }

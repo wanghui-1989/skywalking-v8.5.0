@@ -24,6 +24,7 @@ import org.apache.skywalking.apm.agent.core.context.ids.DistributedTraceId;
 /**
  * The <code>ContextSnapshot</code> is a snapshot for current context. The snapshot carries the info for building
  * reference between two segments in two thread, but have a causal relationship.
+ * ContextSnapshot是当前上下文的快照。快照携带用于在两个线程中的两个段之间构建引用的信息，但具有因果关系。
  */
 @Getter
 public class ContextSnapshot {
@@ -49,6 +50,10 @@ public class ContextSnapshot {
         this.extensionContext = extensionContext.clone();
     }
 
+    /**
+     * 是当前线程的快照，不是父线程的
+     * @return
+     */
     public boolean isFromCurrent() {
         return traceSegmentId != null && traceSegmentId.equals(ContextManager.capture().getTraceSegmentId());
     }

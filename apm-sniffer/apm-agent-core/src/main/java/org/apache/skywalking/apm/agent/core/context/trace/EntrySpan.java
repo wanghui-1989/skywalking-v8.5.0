@@ -31,6 +31,11 @@ import org.apache.skywalking.apm.network.trace.component.Component;
  * But with the last <code>EntrySpan</code>'s tags and logs, which have more details about a service provider.
  * <p>
  * Such as: Tomcat Embed - Dubbox The <code>EntrySpan</code> represents the Dubbox span.
+ *
+ * EntrySpan表示一个服务提供者点，例如Tomcat服务器入口。
+ * 它是跟踪分段的起点，即使在一个复杂的应用程序中，也可能有多层的入口点，入口跨度只代表第一个入口。
+ * 但是使用最后一个EntrySpan的标签和日志，其中包含了有关服务提供商的更多详细信息。
+ * 例如：Tomcat Embed-Dubbox EntrySpan代表Dubbox范围。
  */
 public class EntrySpan extends StackBasedTracingSpan {
 
@@ -46,9 +51,11 @@ public class EntrySpan extends StackBasedTracingSpan {
      */
     @Override
     public EntrySpan start() {
+        //栈深度为1，起始栈帧，类似于java的main方法栈，此时设置开始时间。
         if ((currentMaxDepth = ++stackDepth) == 1) {
             super.start();
         }
+        //清空重置
         clearWhenRestart();
         return this;
     }

@@ -29,8 +29,11 @@ public class CallableOrRunnableInvokeInterceptor implements InstanceMethodsAroun
     @Override
     public void beforeMethod(EnhancedInstance objInst, Method method, Object[] allArguments, Class<?>[] argumentsTypes,
         MethodInterceptResult result) throws Throwable {
+        //TODO 确定？operationName=Thread/com.demo.HelloRunnable/run
         ContextManager.createLocalSpan("Thread/" + objInst.getClass().getName() + "/" + method.getName());
+        //获取父线程的trace上下文
         ContextSnapshot cachedObjects = (ContextSnapshot) objInst.getSkyWalkingDynamicField();
+        //如果父线程没有上下文的时候，构造器中不会set父线程上下文快照，此时cachedObjects=null
         if (cachedObjects != null) {
             ContextManager.continued(cachedObjects);
         }

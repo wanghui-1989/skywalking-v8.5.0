@@ -37,11 +37,29 @@ import static org.apache.skywalking.apm.agent.core.conf.Config.Agent.OPERATION_N
  * https://github.com/opentracing/specification/blob/master/specification.md#references-between-spans
  *
  * <p> Also, {@link ContextManager} delegates to all {@link AbstractTracerContext}'s major methods.
+ *
+ * ContextManager控制TraceSegment的整个上下文。任何TraceSegment都与单个线程相关，
+ * 因此此上下文使用ThreadLocal来维护上下文，并确保由于TraceSegment启动，所有ChildOf span都在同一上下文中。
+ * 什么是“ChildOf”？https://github.com/opentracing/specification/blob/master/specification.md#references-between-spans
+ *
+ * 此外，ContextManager代理了AbstractTracerContext的所有主要方法。
+ * 理解下ChildOf：
+ * 假如前端调用HelloController的一个单线程执行的方法hello()，hello方法内部先调用redis获取数据，然后调用dubbo，再调用mysql，
+ * 那么这次调用的ChildOf关系表示为：
+ *   <p>父Span：HelloController
+ *   <p>    子Span：redis
+ *   <p>    子Span：dubbo
+ *   <p>    子Span：mysql
+ * 我们说redis span 和 HelloController span是ChildOf关系。前提是仅限单线程。
+ * 一个TraceSegment一定是一个单线程的，sw会为它创建一个上下文。
+ * 一个TraceSegment包含多个Span，这些Span都是在这同一个TraceSegment的上下文中。
  */
 public class ContextManager implements BootService {
     private static final String EMPTY_TRACE_CONTEXT_ID = "N/A";
     private static final ILog LOGGER = LogManager.getLogger(ContextManager.class);
+    //追踪上下文，一个线程对应一个AbstractTracerContext，对应一个TraceSegment
     private static ThreadLocal<AbstractTracerContext> CONTEXT = new ThreadLocal<AbstractTracerContext>();
+    //上下文2
     private static ThreadLocal<RuntimeContext> RUNTIME_CONTEXT = new ThreadLocal<RuntimeContext>();
     private static ContextManagerExtendService EXTEND_SERVICE;
 
@@ -57,6 +75,7 @@ public class ContextManager implements BootService {
                 if (EXTEND_SERVICE == null) {
                     EXTEND_SERVICE = ServiceManager.INSTANCE.findService(ContextManagerExtendService.class);
                 }
+                //创建TracingContext，不强制采样的话，可能会返回IgnoredTracerContext
                 context = EXTEND_SERVICE.createTraceContext(operationName, forceSampling);
 
             }
@@ -96,15 +115,22 @@ public class ContextManager implements BootService {
     public static AbstractSpan createEntrySpan(String operationName, ContextCarrier carrier) {
         AbstractSpan span;
         AbstractTracerContext context;
+        //限制操作名称长度
         operationName = StringUtil.cut(operationName, OPERATION_NAME_THRESHOLD);
         if (carrier != null && carrier.isValid()) {
+            //carrier有效，证明这是跨进程过来的span数据
             SamplingService samplingService = ServiceManager.INSTANCE.findService(SamplingService.class);
             samplingService.forceSampled();
+            //获取or创建追踪上下文，因为是跨进程的第一个span，必须要记录下来，所以forceSampling参数传的true，强制采样。
             context = getOrCreate(operationName, true);
+            //创建span，压栈！！！
             span = context.createEntrySpan(operationName);
+            //从跨进程载体中提取数据到当前上下文，关联上这些分布式操作trace
             context.extract(carrier);
         } else {
+            //in jvm的。不强制采样。
             context = getOrCreate(operationName, false);
+            //创建span，压栈！！！
             span = context.createEntrySpan(operationName);
         }
         return span;
@@ -121,7 +147,11 @@ public class ContextManager implements BootService {
             throw new IllegalArgumentException("ContextCarrier can't be null.");
         }
         operationName = StringUtil.cut(operationName, OPERATION_NAME_THRESHOLD);
+        //获取当前traceSegment的上下文，不强制采样的话，可能会返回IgnoredTracerContext
+        //这样将导致后续的所有trace都不被记录
         AbstractTracerContext context = getOrCreate(operationName, false);
+        //remotePeer是当前客户端或者说调用发起方的ip、端口
+        //创建span，压栈！！！
         AbstractSpan span = context.createExitSpan(operationName, remotePeer);
         context.inject(carrier);
         return span;
@@ -130,6 +160,7 @@ public class ContextManager implements BootService {
     public static AbstractSpan createExitSpan(String operationName, String remotePeer) {
         operationName = StringUtil.cut(operationName, OPERATION_NAME_THRESHOLD);
         AbstractTracerContext context = getOrCreate(operationName, false);
+        //remotePeer是当前客户端或者说调用发起方的ip、端口
         return context.createExitSpan(operationName, remotePeer);
     }
 
@@ -146,6 +177,10 @@ public class ContextManager implements BootService {
         }
     }
 
+    /**
+     * 捕获当期线程的上下文快照
+     * @return
+     */
     public static ContextSnapshot capture() {
         return get().capture();
     }
@@ -155,6 +190,7 @@ public class ContextManager implements BootService {
             throw new IllegalArgumentException("ContextSnapshot can't be null.");
         }
         if (!snapshot.isFromCurrent()) {
+            //快照不是当期线程的快照
             get().continued(snapshot);
         }
     }
@@ -191,6 +227,7 @@ public class ContextManager implements BootService {
     }
 
     private static void stopSpan(AbstractSpan span, final AbstractTracerContext context) {
+        //弹栈！！！
         if (context.stopSpan(span)) {
             CONTEXT.remove();
             RUNTIME_CONTEXT.remove();
