@@ -217,6 +217,7 @@ public class TracingContext implements AbstractTracerContext {
         //远程segment和当前segment建立父子关系 ChildOf关系
         this.segment.ref(ref);
         //PropagatedTraceId表示从对等方传播过来的DistributedTraceId。
+        //应该使用远程父segment的分布式traceId，表示为同一个调用链。只修改了这一个值，标记为同一个trace。
         this.segment.relatedGlobalTraces(new PropagatedTraceId(carrier.getTraceId()));
         AbstractSpan span = this.activeSpan();
         if (span instanceof EntrySpan) {
@@ -404,17 +405,22 @@ public class TracingContext implements AbstractTracerContext {
         AbstractSpan lastSpan = peek();
         if (lastSpan == span) {
             if (lastSpan instanceof AbstractTracingSpan) {
+                //是EntrySpan/ExitSpan/LocalSpan
                 AbstractTracingSpan toFinishSpan = (AbstractTracingSpan) lastSpan;
                 if (toFinishSpan.finish(segment)) {
+                    //弹栈
                     pop();
                 }
             } else {
+                //是NoopSpan/NoopExitSpan
+                //弹栈
                 pop();
             }
         } else {
             throw new IllegalStateException("Stopping the unexpected span = " + span);
         }
 
+        //处理异步操作，结束TracingContext运行标记位。
         finish();
 
         return activeSpanStack.isEmpty();
@@ -470,16 +476,24 @@ public class TracingContext implements AbstractTracerContext {
             asyncFinishLock.lock();
         }
         try {
+            //主线程结束，span栈为空
             boolean isFinishedInMainThread = activeSpanStack.isEmpty() && running;
             if (isFinishedInMainThread) {
                 /*
                  * Notify after tracing finished in the main thread.
+                 * 触发主线程完成事件，入参是TracingContext
                  */
                 TracingThreadListenerManager.notifyFinish(this);
             }
 
             if (isFinishedInMainThread && (!isRunningInAsyncMode || asyncSpanCounter == 0)) {
                 TraceSegment finishedSegment = segment.finish(isLimitMechanismWorking());
+                //触发TraceSegment完成事件，入参是TraceSegment
+                //这里包括了向channel缓冲中Channels#bufferChannels写入segment数据
+                //如果是grpc的话会消费这个缓冲的数据，发送给远程collector。
+                //从这里也可以看到不是完成一个span，写一次缓冲，而是主线程完成，整个segment结束，
+                //将整个segment的数据一次性写入缓冲。缺点是如果中间一个span出了问题，已完成的span数据不会被发送，
+                //会丢失整个segment的数据，对定位问题不利。
                 TracingContext.ListenerManager.notifyFinish(finishedSegment);
                 running = false;
             }
@@ -493,6 +507,7 @@ public class TracingContext implements AbstractTracerContext {
     /**
      * The <code>ListenerManager</code> represents an event notify for every registered listener, which are notified
      * when the <code>TracingContext</code> finished, and {@link #segment} is ready for further process.
+     * ListenerManager为每个注册的监听器表示一个事件通知，当TracingContext完成，并且segment准备好进行进一步处理时，会通知这些监听器。
      */
     public static class ListenerManager {
         private static List<TracingContextListener> LISTENERS = new LinkedList<>();
@@ -510,6 +525,9 @@ public class TracingContext implements AbstractTracerContext {
          * Notify the {@link TracingContext.ListenerManager} about the given {@link TraceSegment} have finished. And
          * trigger {@link TracingContext.ListenerManager} to notify all {@link #LISTENERS} 's {@link
          * TracingContextListener#afterFinished(TraceSegment)}
+         *
+         * 通知TracingContext.ListenerManager给定的TraceSegment已完成。
+         * 并触发TracingContext.ListenerManager以通知所有侦听器的TracingContextListener.afterFinished（TraceSegment）
          *
          * @param finishedSegment the segment that has finished
          */

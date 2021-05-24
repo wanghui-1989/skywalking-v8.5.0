@@ -41,6 +41,10 @@ public final class GlobalIdGenerator {
      * The third one also has two parts, 1) a timestamp, measured in milliseconds 2) a seq, in current thread, between
      * 0(included) and 9999(included)
      *
+     * 创建TraceSegment时，会调用两次该方法，一个是生成traceSegmentId，一个是生成DistributedTraceId，先后调用。
+     * 一般都会在同一毫秒内执行完毕。skywalking的traceid生成规则是，在一毫秒内可以创建0-9999(一共一万个值)，也就是一万个traceId。
+     * 因为创建TraceSegment时会调用两次该方法，所以这10000个值最大是要打个对折，即一毫秒内最多能创建5000个左右的traceId。
+     *
      * @return unique id to represent a trace or segment
      */
     public static String generate() {

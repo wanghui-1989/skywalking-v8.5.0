@@ -167,11 +167,13 @@ public class TraceSegment {
 
     /**
      * This is a high CPU cost method, only called when sending to collector or test cases.
+     * 发给collector之前的数据填充、转换操作。
      *
      * @return the segment as GRPC service parameter
      */
     public SegmentObject transform() {
         SegmentObject.Builder traceSegmentBuilder = SegmentObject.newBuilder();
+        //分布式traceId
         traceSegmentBuilder.setTraceId(getRelatedGlobalTraces().get(0).getId());
         /*
          * Trace Segment

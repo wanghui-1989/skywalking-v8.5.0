@@ -29,7 +29,7 @@ public class CallableOrRunnableInvokeInterceptor implements InstanceMethodsAroun
     @Override
     public void beforeMethod(EnhancedInstance objInst, Method method, Object[] allArguments, Class<?>[] argumentsTypes,
         MethodInterceptResult result) throws Throwable {
-        //TODO 确定？operationName=Thread/com.demo.HelloRunnable/run
+        //创建当前线程的上下文，创建LocalSpan，使用新的segmentId和spanId，压栈
         ContextManager.createLocalSpan("Thread/" + objInst.getClass().getName() + "/" + method.getName());
         //获取父线程的trace上下文
         ContextSnapshot cachedObjects = (ContextSnapshot) objInst.getSkyWalkingDynamicField();
@@ -42,6 +42,7 @@ public class CallableOrRunnableInvokeInterceptor implements InstanceMethodsAroun
     @Override
     public Object afterMethod(EnhancedInstance objInst, Method method, Object[] allArguments, Class<?>[] argumentsTypes,
         Object ret) throws Throwable {
+        //LocalSpan弹栈
         ContextManager.stopSpan();
         // clear ContextSnapshot
         objInst.setSkyWalkingDynamicField(null);

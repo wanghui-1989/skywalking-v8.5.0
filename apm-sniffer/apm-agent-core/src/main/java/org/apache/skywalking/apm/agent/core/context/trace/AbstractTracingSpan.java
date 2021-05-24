@@ -90,6 +90,8 @@ public abstract class AbstractTracingSpan implements AbstractSpan {
      * The refs of parent trace segments, except the primary one. For most RPC call, {@link #refs} contains only one
      * element, but if this segment is a start span of batch process, the segment faces multi parents, at this moment,
      * we use this {@link #refs} to link them.
+     * 父跟踪段的引用，主跟踪段除外。对于大多数RPC调用，refs只包含一个元素，
+     * 但是如果该段是批处理的起始段，则该段面对多个父级，此时，我们使用该refs链接它们。
      */
     protected List<TraceSegmentRef> refs;
 
@@ -139,6 +141,9 @@ public abstract class AbstractTracingSpan implements AbstractSpan {
     /**
      * Finish the active Span. When it is finished, it will be archived by the given {@link TraceSegment}, which owners
      * it.
+     *
+     * 完成当期活动的span。完成后，它将由拥有它的给定segment存档。
+     * 到这里一个span就结束了，将它添加到TraceSegment的所有已完成span容器中，等待被发送。
      *
      * @param owner of the Span.
      */

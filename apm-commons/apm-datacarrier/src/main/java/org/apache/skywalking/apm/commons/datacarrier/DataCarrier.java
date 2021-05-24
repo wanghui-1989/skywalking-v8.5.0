@@ -73,6 +73,8 @@ public class DataCarrier<T> {
     /**
      * produce data to buffer, using the given {@link BufferStrategy}.
      *
+     * 使用给定的buffer策略生成要缓冲的数据。比如是GRPC的话就是发送给远程collector。
+     *
      * @return false means produce data failure. The data will not be consumed.
      */
     public boolean produce(T data) {

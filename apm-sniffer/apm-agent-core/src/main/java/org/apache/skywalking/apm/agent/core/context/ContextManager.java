@@ -125,7 +125,7 @@ public class ContextManager implements BootService {
             context = getOrCreate(operationName, true);
             //创建span，压栈！！！
             span = context.createEntrySpan(operationName);
-            //从跨进程载体中提取数据到当前上下文，关联上这些分布式操作trace
+            //从跨进程载体中提取数据到当前上下文，使用分布式traceId的值，关联上这些分布式操作trace
             context.extract(carrier);
         } else {
             //in jvm的。不强制采样。
@@ -191,6 +191,9 @@ public class ContextManager implements BootService {
         }
         if (!snapshot.isFromCurrent()) {
             //快照不是当期线程的快照
+            //举例：线程T1创建了任务R，然后提交给某个线程池，线程池将任务R放到队列中，为了最大化的利用线程，
+            //编码中让线程T1也参与到了从队列取任务的过程，结果线程T1拿到了它自己刚提交的任务R，
+            // 此时快照就是当前线程T1的，这个不是也不需要跨线程追踪。
             get().continued(snapshot);
         }
     }

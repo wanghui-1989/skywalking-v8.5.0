@@ -89,7 +89,7 @@ public class TomcatInvokeInterceptor implements InstanceMethodsAroundInterceptor
         }
 
         //每个线程在afterMethod或者异常捕获里都会删除本次创建的context，所以需要为当期线程创建一个context
-        //这里会在创建的context中，将EntrySpan压栈
+        //这里会在创建的context中，将EntrySpan压栈。
         AbstractSpan span = ContextManager.createEntrySpan(request.getRequestURI(), contextCarrier);
         Tags.URL.set(span, request.getRequestURL().toString());
         Tags.HTTP.METHOD.set(span, request.getMethod());

@@ -23,6 +23,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class DistributedTraceIds {
+    //relatedGlobalTraces表示所有相关跟踪的集合。 大多数情况下，它仅包含一个元素，因为仅存在一个父级TraceSegment，
+    // 但是在批处理方案中，num变得大于1，这也意味着多父级TraceSegment。
     private LinkedList<DistributedTraceId> relatedGlobalTraces;
 
     public DistributedTraceIds() {
@@ -35,7 +37,8 @@ public class DistributedTraceIds {
 
     public void append(DistributedTraceId distributedTraceId) {
         //如果relatedGlobalTraces不为空 并且 头是NewDistributedTraceId 需要删除头
-        //因为当前TraceSegment和父segment是同一个分布式traceid的关系，当前TraceSegment不能使用另一个不同的traceid
+        //因为当前TraceSegment和父segment是同一个分布式traceid的关系，
+        // 当前TraceSegment应该使用父segment的分布式traceId，不能使用自己创建的traceid
         if (relatedGlobalTraces.size() > 0 && relatedGlobalTraces.getFirst() instanceof NewDistributedTraceId) {
             relatedGlobalTraces.removeFirst();
         }
