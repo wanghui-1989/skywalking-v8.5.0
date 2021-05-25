@@ -341,6 +341,8 @@ public class TracingContext implements AbstractTracerContext {
             NoopSpan span = new NoopSpan();
             return push(span);
         }
+        //对于一个独立的子线程，或者说线程池内的一个线程，一般是在run/call方法执行前会调用createLocalSpan方法，
+        //此时栈应该是空的栈，parentSpanId应该为-1，新的LocalSpan是该线程调用链的第一个元素。
         AbstractSpan parentSpan = peek();
         final int parentSpanId = parentSpan == null ? -1 : parentSpan.getSpanId();
         AbstractTracingSpan span = new LocalSpan(spanIdGenerator++, parentSpanId, operationName, this);
@@ -368,10 +370,14 @@ public class TracingContext implements AbstractTracerContext {
         AbstractSpan parentSpan = peek();
         TracingContext owner = this;
         if (parentSpan != null && parentSpan.isExit()) {
-            //parentSpan是ExitSpan，TODO 考虑下这是什么场景会出现？？
+            //parentSpan是ExitSpan
+            //出现这种情况的可能场景：假设公司自研框架的RPC框架需要支持SkyWalking追踪，我们开发了相关插件，
+            //在请求发出之前创建了ExitSpan，此时该ExitSpan压入栈中。因为公司自研RPC框架实际使用了HttpClient来发送请求，
+            //经过httpClient插件的增强，又会创建一个ExitSpan，此时取到的parentSpan就是自研框架压入的那个ExitSpan。
+            //这里相当于在客户端丢弃了HttpClient的ExitSpan，使用自研框架的ExitSpan。
             exitSpan = parentSpan;
         } else {
-            //大部分情况下parentSpan不为null TODO 考虑下null什么场景会出现？？
+            //parentSpan一般是EntrySpan/LocalSpan，基本不会是Null(没想到能出现Null的场景)
             final int parentSpanId = parentSpan == null ? -1 : parentSpan.getSpanId();
             //remotePeer是当前客户端或者说调用发起方的ip、端口
             exitSpan = new ExitSpan(spanIdGenerator++, parentSpanId, operationName, remotePeer, owner);
